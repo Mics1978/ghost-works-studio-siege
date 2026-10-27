@@ -1,0 +1,2 @@
+{ "name": "ghost-works-studio-siege", "version": "1.0.0", "private": true, "type": "module",
+  "scripts": { "test": "node tests/sim.test.js" } }

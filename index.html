@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0d0b1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Ghost Works: Studio Siege</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M6 30V14a10 10 0 0 1 20 0v16l-3.3-3-3.4 3-3.3-3-3.3 3-3.4-3z' fill='%23ff5ea8'/%3E%3Ccircle cx='12' cy='14' r='2.5'/%3E%3Ccircle cx='20' cy='14' r='2.5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <header id="hud">
+    <div class="brand"><span class="ghost"></span><b>GHOST WORKS</b><small>Studio Siege</small></div>
+    <div class="stats">
+      <span title="Level">LV <b id="hud-level">1</b></span>
+      <span title="Wave">W <b id="hud-wave">0/0</b></span>
+      <span title="Credits" class="cr">₵ <b id="hud-credits">0</b></span>
+      <span title="Studio integrity" class="lv">♥ <b id="hud-lives">20</b></span>
+      <span title="Score" class="hide-sm">★ <b id="hud-score">0</b></span>
+    </div>
+    <div class="ctrls">
+      <button id="btn-speed" class="sm">1×</button>
+      <button id="btn-menu" class="sm" aria-label="Menu">☰</button>
+    </div>
+  </header>
+  <main id="stage"><canvas id="game"></canvas><div id="toast"></div><div id="banner"></div></main>
+  <footer id="dock">
+    <div id="build-bar"></div>
+    <div id="tower-panel" hidden></div>
+    <button id="btn-wave" class="primary">START WAVE ▶</button>
+  </footer>
+  <div id="overlay" class="overlay"></div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
