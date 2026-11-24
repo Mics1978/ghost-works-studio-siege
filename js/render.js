@@ -18,10 +18,10 @@ export class Renderer {
     const off = document.createElement('canvas'); off.width = this.c.width; off.height = this.c.height;
     const ctx = off.getContext('2d'); const dpr = this.c.width / this.w; ctx.scale(dpr, dpr);
     ctx.fillStyle = env.bg; ctx.fillRect(0, 0, this.w, this.h);
-    const backdrop=ctx.createLinearGradient(0,0,0,this.h);backdrop.addColorStop(0,env.bg);backdrop.addColorStop(1,'#060917');ctx.fillStyle=backdrop;ctx.fillRect(0,0,this.w,this.h);
+    const backdrop=ctx.createLinearGradient(0,0,0,this.h);backdrop.addColorStop(0,shade(env.bg,2.0));backdrop.addColorStop(1,shade(env.bg,1.15));ctx.fillStyle=backdrop;ctx.fillRect(0,0,this.w,this.h);
     ctx.save(); ctx.translate(this.ox, this.oy);
     for (let x = 0; x < GRID_W; x++) for (let y = 0; y < GRID_H; y++) {
-      ctx.fillStyle=(x+y)%2?'#ffffff08':'#00000017';ctx.fillRect(x*s+1,y*s+1,s-2,s-2);
+      ctx.fillStyle=(x+y)%2?'#ffffff16':'#0000000c';ctx.fillRect(x*s+1,y*s+1,s-2,s-2);
       ctx.fillStyle=env.grid;ctx.fillRect(x*s+2,y*s+2,s-4,Math.max(1,s*.04));ctx.fillRect(x*s+2,y*s+2,Math.max(1,s*.04),s-4);
       if((x*13+y*7)%5===0){ctx.fillStyle=env.accent;ctx.globalAlpha=.34;ctx.fillRect(x*s+s*.14,y*s+s*.16,Math.max(1,s*.07),Math.max(1,s*.07));ctx.globalAlpha=1;}
       ctx.strokeStyle = env.grid; ctx.lineWidth = 1; ctx.strokeRect(x * s + 0.5, y * s + 0.5, s - 1, s - 1);
@@ -31,7 +31,7 @@ export class Renderer {
     }
     for (const p of game.def.routes) {
       ctx.lineCap = 'square'; ctx.lineJoin = 'miter';
-      for (const [w, col] of [[s*.98,'#080b19'],[s * 0.92, env.pathEdge], [s * 0.78, env.path]]) {
+      for (const [w, col] of [[s*.98,'#080b19'],[s * 0.92, shade(env.pathEdge,1.3)], [s * 0.78, shade(env.path,1.5)]]) {
         ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath();
         p.forEach(([x, y], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, x * s + s / 2, y * s + s / 2)); ctx.stroke();
       }
@@ -71,52 +71,37 @@ export class Renderer {
     ctx.restore();
   }
 }
-// Original pixel-art sprites; 24 x 24 logical pixels, independent of simulation.
-const sprites = new Map();
+// Amiga Plus: cached 96px vector sprites; no external textures.
+const sprites=new Map();
 function shade(hex,k){const n=parseInt(hex.slice(1),16);return '#'+[n>>16,(n>>8)&255,n&255].map(v=>Math.max(0,Math.min(255,Math.round(v*k))).toString(16).padStart(2,'0')).join('');}
 function makeSprite(kind,color,frame=0){
-  const key=kind+':'+color+':'+frame;if(sprites.has(key))return sprites.get(key);
-  const cv=document.createElement('canvas');cv.width=cv.height=24;const g=cv.getContext('2d');
-  const dark='#080c1b',steel='#293957',mid=shade(color,.65),hi=shade(color,1.25);
-  function p(x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h);}
-  function panel(x,y,w,h,c){p(x,y,w,h,dark);p(x+1,y+1,w-2,h-2,steel);p(x+2,y+2,w-4,h-4,c);p(x+2,y+2,w-4,1,hi);p(x+2,y+h-3,w-4,1,mid);}
-  function eye(x,y){p(x,y,3,3,dark);p(x+1,y,2,1,'#fff8d7');}
-  function glow(x,y,w,h){p(x,y,w,h,mid);p(x+1,y+1,Math.max(1,w-2),Math.max(1,h-2),color);}
-  if(kind==='ghost'||kind==='glitch'||kind==='phantom'){
-    p(5,19,14,3,'#080c1b');p(6,4,12,2,dark);p(4,6,16,12,dark);p(6,6,12,12,mid);p(7,5,10,12,color);p(5,9,14,8,color);p(7,7,3,2,hi);
-    for(let i=0;i<3;i++){p(5+i*5,17,4,3+(frame+i)%2,mid);p(6+i*5,17,2,2,color);}eye(7,10);eye(14,10);
-    if(kind==='phantom'){p(2,7,3,10,mid);p(19,7,3,10,mid);p(9,15,6,1,'#fbe6ff');}
-  }else if(kind==='spark'){
-    p(1,10,5,3,mid);p(4,8,5,7,dark);p(7,6,11,12,dark);p(9,7,8,10,color);p(17,10,5,4,hi);p(10,8,5,2,'#fff7b0');p(12,14,5,2,mid);p(1,9+frame*3,5,1,color);
-  }else if(kind==='swarm'){
-    for(let i=0;i<3;i++){const x=2+i*7,y=8+((i+frame)%2)*3;panel(x,y,6,7,color);p(x+2,y+2,2,2,'#f3fff9');}
-  }else if(kind==='brick'||kind==='overlord'){
-    panel(3,4,18,17,mid);panel(1,8,5,10,steel);panel(18,8,5,10,steel);panel(7,7,10,10,color);
-    p(9,9,6,3,dark);p(10,10,4,1,'#fff6db');p(5,20,5,3,dark);p(14,20,5,3,dark);p(6,20,3,1,color);p(15,20,3,1,color);
-    if(kind==='overlord'){p(2,1,5,7,mid);p(17,1,5,7,mid);glow(9,13,6,5);p(11,14,2,2,'#fff');}
-  }else if(kind==='hydra'||kind==='nullking'){
-    panel(5,5,14,15,mid);glow(8,8,8,9);p(10,10,4,4,'#fff7cc');
-    for(let i=0;i<4;i++){const x=i%2?18:1,y=i<2?4:15;panel(x,y+((i+frame)%2),5,6,color);}
-    p(7,2,2,5,color);p(15,2,2,5,color);p(11,1,2,5,hi);
-  }else{
-    // Bevelled mounting platform and distinct defence silhouettes.
-    panel(2,3,20,19,steel);p(4,19,16,2,'#101c33');p(4,5,2,2,color);p(18,5,2,2,color);p(4,17,2,1,hi);p(18,17,2,1,hi);
-    if(kind==='security'||kind==='engineer'){
-      panel(7,7,10,10,mid);p(10,10,5,4,color);p(14,10,8,4,dark);p(15,11,7,2,hi);p(20,10,2,4,color);p(8,8,4,2,hi);
-      if(kind==='engineer'){p(6,6,3,3,color);p(6,15,3,3,color);p(15,15,3,3,color);}
-    }else if(kind==='sound'){
-      for(const y of [5,12]){panel(6,y,12,7,mid);p(9,y+2,6,4,dark);p(10,y+2,4,3,color);p(11,y+3,2,1,hi);}
-    }else if(kind==='signal'){
-      p(11,3,2,15,color);p(9,6,6,2,hi);p(7,9,10,2,mid);p(5,12,14,2,mid);p(7,16,10,3,color);glow(10,2,4,4);
-    }else if(kind==='producer'){
-      panel(6,6,12,12,mid);glow(8,8,8,7);p(9,9,6,1,hi);p(9,12,2,1,'#fff');p(12,12,3,1,'#fff');p(8,16,8,1,color);
-    }else if(kind==='drone'){
-      p(5,10,14,4,mid);p(10,5,4,14,color);panel(7,7,10,10,steel);glow(9,9,6,6);for(const [x,y] of [[3,3],[17,3],[3,17],[17,17]]){panel(x,y,4,4,color);}
-    }
-  }
-  sprites.set(key,cv);return cv;
+ const key=kind+':'+color+':'+frame;if(sprites.has(key))return sprites.get(key);
+ const cv=document.createElement('canvas');cv.width=cv.height=96;const g=cv.getContext('2d');g.scale(4,4);g.lineJoin='round';g.lineCap='round';
+ const ink='#101a32',steel='#6989a9',dark=shade(color,.48);
+ function grad(c,x,y,h){const p=g.createLinearGradient(x,y,x+h*.4,y+h);p.addColorStop(0,shade(c,1.5));p.addColorStop(.38,c);p.addColorStop(1,shade(c,.48));return p;}
+ function path(pts,c,edge=ink){g.beginPath();pts.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.fillStyle=c;g.fill();if(edge){g.strokeStyle=edge;g.lineWidth=.6;g.stroke();}}
+ function box(x,y,w,h,c,r=1){r=Math.min(r,w/2,h/2);g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();g.fillStyle=grad(c,x,y,h);g.fill();g.strokeStyle=ink;g.lineWidth=.6;g.stroke();}
+ function orb(x,y,r,c){const p=g.createRadialGradient(x-r*.3,y-r*.4,0,x,y,r);p.addColorStop(0,'#fff');p.addColorStop(.3,shade(c,1.35));p.addColorStop(.65,c);p.addColorStop(1,shade(c,.48));g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fillStyle=p;g.fill();g.strokeStyle=ink;g.lineWidth=.45;g.stroke();}
+ function line(x,y,a,b,c,w=.6){g.beginPath();g.moveTo(x,y);g.lineTo(a,b);g.strokeStyle=c;g.lineWidth=w;g.stroke();}
+ function dot(x,y,r,c){g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fillStyle=c;g.fill();}
+ function base(){path([[2,7],[7,3],[17,3],[22,7],[22,18],[17,22],[7,22],[2,18]],grad(steel,2,3,19));path([[4,8],[8,5],[16,5],[20,8],[20,17],[16,20],[8,20],[4,17]],grad('#294968',4,5,15));for(const [x,y] of [[5,7],[19,7],[5,18],[19,18]])dot(x,y,.65,color);}
+ if(kind==='ghost'||kind==='glitch'||kind==='phantom'){
+  if(kind==='phantom'){path([[1,9],[5,5],[8,15],[4,21]],grad(dark,1,5,16));path([[23,9],[19,5],[16,15],[20,21]],grad(dark,16,5,16));}
+  g.beginPath();g.moveTo(4.5,20);g.lineTo(4.5,10);g.bezierCurveTo(4.5,1,19.5,1,19.5,10);g.lineTo(19.5,20);g.quadraticCurveTo(17,22-frame,15,18);g.quadraticCurveTo(12,23,9,18);g.quadraticCurveTo(6,22,4.5,20);g.closePath();g.fillStyle=grad(color,5,3,19);g.fill();g.strokeStyle=ink;g.lineWidth=.7;g.stroke();box(7,9,4,5,'#182b48',1.4);box(13,9,4,5,'#182b48',1.4);dot(8.4,10.5,.8,'#fff');dot(14.4,10.5,.8,'#fff');line(8,6,11,5,'#fff',.9);
+ }else if(kind==='spark'){path([[1,9+frame],[8,10],[8,15],[1,17-frame]],grad(color,1,9,8),null);path([[4,12],[10,5],[17,5],[23,12],[17,19],[10,19]],grad(color,4,5,14));orb(15,12,4,color);line(9,8,14,7,'#fff');}
+ else if(kind==='swarm'){for(let i=0;i<3;i++){const x=5+i*7,y=10+((i+frame)%2)*4;orb(x,y,3.2,color);dot(x,y,.9,'#fff');}}
+ else if(kind==='brick'||kind==='overlord'){box(3,4,18,17,steel,2);box(1,8,5,10,dark,1);box(18,8,5,10,dark,1);box(7,6,10,12,color,2);box(8,8,8,4,'#15263e',1);line(9,10,15,10,'#fff8bd',1);box(5,19,5,4,steel);box(14,19,5,4,steel);if(kind==='overlord'){path([[2,7],[2,1],[7,5],[7,9]],grad(color,2,1,8));path([[17,9],[17,5],[22,1],[22,7]],grad(color,17,1,8));orb(12,15,3,color);}}
+ else if(kind==='hydra'||kind==='nullking'){box(5,4,14,17,steel,2);orb(12,12,5,color);for(const [x,y] of [[4,5],[20,5],[4,18],[20,18]]){line(12,12,x,y,steel,2);orb(x,y+(frame%2)*.5,2.8,color);}path([[8,5],[8,1],[12,4],[16,1],[16,5]],grad(color,8,1,5));}
+ else {base();
+  if(kind==='security'||kind==='engineer'){orb(12,12,5.4,steel);box(8,8,8,8,color,2);orb(12,12,2.4,color);if(kind==='engineer'){for(const [x,y] of [[7,7],[17,7],[7,17],[17,17]])dot(x,y,1.1,color);}}
+  else if(kind==='sound'){for(const y of [5,12]){box(6,y,12,7,steel);orb(12,y+3.5,3,color);dot(12,y+3.5,1.1,'#fff');}}
+  else if(kind==='signal'){box(7,16,10,3,steel);line(12,16,12,4,color,1.7);for(let i=0;i<3;i++)line(8-i,7+i*3,16+i,7+i*3,color,.8);orb(12,4,2.4,color);}
+  else if(kind==='producer'){box(6,6,12,12,steel,2);box(8,8,8,7,color);line(9,11,15,11,'#fff',.9);line(9,13,13,13,'#fff',.7);for(let i=0;i<3;i++)dot(9+i*3,17,.6,color);}
+  else if(kind==='drone'){line(5,5,19,19,steel,3);line(19,5,5,19,steel,3);for(const [x,y] of [[5,5],[19,5],[5,19],[19,19]]){orb(x,y,3,steel);dot(x,y,1.1,color);}orb(12,12,5,color);}
+ }
+ sprites.set(key,cv);return cv;
 }
-function blit(ctx,kind,color,x,y,size,frame=0){ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(makeSprite(kind,color,frame),Math.round(x-size/2),Math.round(y-size/2),Math.max(1,Math.round(size)),Math.max(1,Math.round(size)));ctx.restore();}
+function blit(ctx,kind,color,x,y,size,frame=0){ctx.save();ctx.imageSmoothingEnabled=true;ctx.drawImage(makeSprite(kind,color,frame),x-size/2,y-size/2,Math.max(1,size),Math.max(1,size));ctx.restore();}
 export function drawGhost(ctx,x,y,r,color){blit(ctx,'ghost',color,x,y,r*2.4);}
 export function drawTowerIcon(ctx,type,cx,cy,s,level=1,angle=0,time=0){
   const color=TOWERS[type].color;
