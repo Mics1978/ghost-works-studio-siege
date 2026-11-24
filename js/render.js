@@ -55,6 +55,13 @@ export class Renderer {
     const dpr = this.c.width / this.w; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.save(); ctx.translate(this.ox, this.oy);
     if (game.def.event === 'blackout' && game.phase === 'wave') { ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, GRID_W * s, GRID_H * s); }
+    // Construction markers: actual placement rules, not decorative cells.
+    if(game.phase==='build'&&!ui.selected){
+      ctx.strokeStyle='#70e5c38c';ctx.lineWidth=Math.max(.7,s*.035);
+      for(let y=0;y<GRID_H;y++)for(let x=0;x<GRID_W;x++)if(game.canPlace(x,y)){
+        const a=x*s+s*.5,b=y*s+s*.5,d=s*.105;ctx.beginPath();ctx.moveTo(a-d,b);ctx.lineTo(a+d,b);ctx.moveTo(a,b-d);ctx.lineTo(a,b+d);ctx.stroke();
+      }
+    }
     // hover/selection
     if (ui.hover) { const [hx, hy] = ui.hover; ctx.fillStyle = game.canPlace(hx, hy) ? 'rgba(120,255,160,0.18)' : 'rgba(255,80,80,0.18)'; ctx.fillRect(hx * s, hy * s, s, s); }
     const sel = ui.selected;
