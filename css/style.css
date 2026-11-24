@@ -58,3 +58,24 @@ button:focus-visible{outline:2px solid #ffe298;outline-offset:2px}
 /* Independent music and SFX controls. */
 .audio-controls{display:flex;align-items:center;gap:4px}.audio-controls button{color:#ffe6a4;min-width:34px;padding:4px 6px}.audio-controls button[aria-pressed=false]{color:#a9afc5;opacity:.8}.card .audio-controls{justify-content:center;margin:0 auto 12px;gap:8px}.card .audio-controls button{min-height:36px;font-size:12px;padding:5px 12px}#tower-panel[hidden],#build-bar[hidden]{display:none}
 @media(max-width:420px){#hud{flex-wrap:wrap}.brand{flex:1 1 auto}.ctrls{margin-left:auto}.stats{order:3;flex:1 0 100%;justify-content:space-around}.audio-controls{gap:3px}.ctrls .audio-controls button{min-width:29px;padding:3px 4px}}
+
+/* Amiga Plus - readable machine shop; scroll horizontally on mobile. */
+#game,.tb canvas{image-rendering:auto}
+#hud,#dock{background:linear-gradient(#294d75,#132940);border-color:#6b9dc4}
+#dock{display:flex;flex-wrap:wrap;gap:6px;align-items:stretch}
+#build-bar{flex:1 1 100%;min-width:0;overflow-x:auto;scrollbar-width:thin;touch-action:pan-x}
+.tb{width:clamp(132px,36vw,168px);min-height:122px;padding:5px 7px;gap:2px;border-radius:7px;background:linear-gradient(#294b6e,#17283e);color:#fff;justify-content:flex-start;text-align:center;white-space:normal}
+.tb canvas{width:44px;height:44px;flex-shrink:0}
+.machine-name{font-size:12px;font-weight:800;line-height:1.15}
+.machine-desc{font-size:11px;line-height:1.2;color:#d7e8f7}
+.tb .c{font-size:12px;color:#91ffbd}
+.tb.locked{opacity:1;filter:none;border-style:dashed}.tb.locked canvas{opacity:.55}.tb.locked .c{color:#ffdf9c}
+.tb.dis{opacity:1}.tb.dis:not(.locked) .c{color:#ffb5a8}
+.tb.sel{border-color:#7affc8;background:linear-gradient(#365d75,#21453f);box-shadow:inset 0 0 0 1px #7affc8}
+#build-hint{font-size:11px;color:#aefce3;flex:1 1 100%;padding:0 5px}
+#btn-wave{min-height:40px;flex:1 1 100%}
+button.primary{background:linear-gradient(#ff85c0,#c03c88);border-radius:7px}
+.card{background:linear-gradient(#29496f,#15243b);border-radius:10px;border-color:#78a6d2}
+.title-ghost{clip-path:none;border-radius:32px 32px 8px 8px}
+@media(min-width:1000px){#build-bar{flex:1 1 0}#btn-wave{flex:0 0 140px}}
+@media(max-height:480px) and (orientation:landscape){.tb{min-height:76px;width:170px;display:grid;grid-template-columns:36px 1fr;grid-template-rows:auto auto auto;align-content:start;align-items:center;text-align:left}.tb canvas{grid-row:1/4;width:34px;height:34px}.machine-desc{font-size:10px}.tb .c{font-size:11px}#dock{gap:3px;padding:3px 6px}#btn-wave{min-height:30px;padding:4px 8px}}
