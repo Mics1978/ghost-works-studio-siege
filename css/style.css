@@ -54,3 +54,7 @@ button:focus-visible{outline:2px solid #ffe298;outline-offset:2px}
 #banner{color:#fff0b8;text-shadow:2px 2px #a84d85,4px 4px #241d43}
 @media(max-width:640px){#hud{gap:4px;padding:5px 5px}.brand{gap:3px}.brand b{font-size:10px;letter-spacing:.03em}.stats{gap:4px;font-size:11px}.ctrls{gap:3px}.ctrls .sm{min-width:29px;padding:3px 4px;font-size:12px}}
 @media(prefers-reduced-motion:reduce){.title-ghost{animation:none}}
+
+/* Independent music and SFX controls. */
+.audio-controls{display:flex;align-items:center;gap:4px}.audio-controls button{color:#ffe6a4;min-width:34px;padding:4px 6px}.audio-controls button[aria-pressed=false]{color:#a9afc5;opacity:.8}.card .audio-controls{justify-content:center;margin:0 auto 12px;gap:8px}.card .audio-controls button{min-height:36px;font-size:12px;padding:5px 12px}#tower-panel[hidden],#build-bar[hidden]{display:none}
+@media(max-width:420px){#hud{flex-wrap:wrap}.brand{flex:1 1 auto}.ctrls{margin-left:auto}.stats{order:3;flex:1 0 100%;justify-content:space-around}.audio-controls{gap:3px}.ctrls .audio-controls button{min-width:29px;padding:3px 4px}}
