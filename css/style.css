@@ -79,3 +79,30 @@ button.primary{background:linear-gradient(#ff85c0,#c03c88);border-radius:7px}
 .title-ghost{clip-path:none;border-radius:32px 32px 8px 8px}
 @media(min-width:1000px){#build-bar{flex:1 1 0}#btn-wave{flex:0 0 140px}}
 @media(max-height:480px) and (orientation:landscape){.tb{min-height:76px;width:170px;display:grid;grid-template-columns:36px 1fr;grid-template-rows:auto auto auto;align-content:start;align-items:center;text-align:left}.tb canvas{grid-row:1/4;width:34px;height:34px}.machine-desc{font-size:10px}.tb .c{font-size:11px}#dock{gap:3px;padding:3px 6px}#btn-wave{min-height:30px;padding:4px 8px}}
+
+
+/* Mobile layout repair: battlefield and shop occupy separate, non-overlapping rows. */
+#app{min-height:0;overflow:hidden}
+#hud{flex:0 0 auto;min-height:0}
+#stage{flex:1 1 0;min-height:0;overflow:hidden;isolation:isolate}
+#game{width:100%;height:100%;max-width:100%;max-height:100%}
+#dock{position:relative;z-index:2;flex:0 0 auto;min-height:0;max-height:48%;overflow-y:auto;overscroll-behavior:contain}
+#build-bar{min-height:0;max-width:100%;overscroll-behavior-x:contain}
+#tower-panel:not([hidden]){min-width:0}
+@media(max-width:640px){
+  #dock{max-height:48%;padding:5px 7px;gap:4px}
+  #build-hint{font-size:11px;line-height:1.2}
+  .tb{width:142px;min-height:108px;padding:4px}
+  .tb canvas{width:36px;height:36px}
+  .machine-desc{font-size:10px}
+  #btn-wave{min-height:38px}
+}
+@media(max-height:500px) and (orientation:landscape){
+  #hud{flex:0 0 auto}
+  #dock{max-height:49%;padding:3px 6px;gap:3px}
+  #build-hint{flex:1 1 100%;font-size:10px;line-height:1}
+  #build-bar{flex:1 1 auto;min-width:0}
+  .tb{width:160px;min-height:72px;padding:3px 5px}
+  .tb canvas{width:30px;height:30px}
+  #btn-wave{flex:0 0 110px;min-width:110px;min-height:40px;align-self:stretch}
+}
