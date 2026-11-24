@@ -28,7 +28,7 @@ function titleScreen() {
     <div class="btns">
       ${run ? `<button class="primary" id="o-continue">CONTINUE · Level ${run.level}</button>` : ''}
       <button ${run ? '' : 'class="primary"'} id="o-new">NEW RUN</button>
-      <button id="o-stats">Progress</button><button id="o-how">How to play</button><button id="o-credits">Credits / About</button>
+      <button id="o-stats">Progress</button><button id="o-how">Field manual</button><button id="o-credits">Credits / About</button>
     </div>`);
   bind({ 'o-continue': () => startLevel(save.run.level), 'o-new': confirmNewRun, 'o-stats': statsScreen, 'o-how': howScreen, 'o-credits': creditsScreen });
 }
@@ -52,15 +52,15 @@ function statsScreen() {
   bind({ 'o-back': titleScreen, 'o-reset': () => { if (confirm('Erase all Ghost Works progress?')) { save = Save.defaultSave(); persist(); titleScreen(); } } });
 }
 function howScreen() {
-  const tw = TOWER_ORDER.map((k) => `<tr><td><b style="color:${TOWERS[k].color}">${TOWERS[k].name}</b> ₵${TOWERS[k].cost}<br><small>${TOWERS[k].desc}</small></td></tr>`).join('');
+  const tw = TOWER_ORDER.map((k) => `<tr><td><b style="color:${TOWERS[k].color}">${TOWERS[k].name}</b> ₵${TOWERS[k].cost}<br><small>${MACHINE_LORE[k]}<br>${TOWERS[k].desc}</small></td></tr>`).join('');
   const en = Object.values(ENEMIES).map((e) => `<tr><td><b style="color:${e.color}">${e.name}</b> — <small>${e.desc}</small></td></tr>`).join('');
-  showOverlay(`<h2>How to play</h2><p>Pick a defence in the bottom bar, tap a free tile to build. Tap a built unit to upgrade or sell it. Press START WAVE. Defeated enemies pay credits. If studio integrity (♥) hits zero, the run ends.</p>
+  showOverlay(`<h2>Ghost Works Field Manual</h2><p>MISSION: Protect the studio network from hostile transmissions. Deploy machines along the enemy route before launching the next wave.</p><h3>01 · Build your defence</h3><p>Choose a named machine in the shop, then tap a marked construction tile on the grid. You cannot build on the enemy route. Each machine costs credits. Tap an installed unit to inspect, upgrade or sell it.</p><h3>02 · Hold the line</h3><p>Press START WAVE to release the next enemy group. Your machines act automatically. Defeated enemies earn credits. If studio integrity (♥) reaches zero, the run ends.</p>
     <p>Levels 1–10 are the introductory campaign. From Level 11, Infinite Missions are generated from your run seed — there is no final level.</p>
     <h3>Defences</h3><table>${tw}</table><h3>Threats</h3><table>${en}</table><div class="btns"><button id="o-back">Back</button></div>`);
   bind({ 'o-back': game && !game.ended ? resumeOrTitle : titleScreen });
 }
 function creditsScreen() {
-  showOverlay(`<h2>Credits / About</h2><p><b>Ghost Works: Studio Siege</b> — 16-bit audiovisual preview</p>
+  showOverlay(`<h2>Credits / About</h2><p><b>Ghost Works: Studio Siege</b> — Amiga Plus audiovisual preview</p>
     <p>An original Ghost Works title. All artwork is procedurally generated with HTML Canvas and CSS; no third-party art or franchise assets are used.</p>
     <p>Credits (₵) are a fictional in-game currency with no real-world value. No purchases, wallets or payments.</p>
     <p><small>Original synthesized soundtrack and arcade sound effects. Development assisted by Grok Build and ChatGPT.</small></p>
@@ -88,31 +88,34 @@ function startLevel(n) {
   bind({ 'o-go': hideOverlay });
 }
 
+const MACHINE_LORE={security:'The studio’s first line of defence. Reliable fire against incoming rogue signals.',sound:'Turns studio bass into a shockwave. Hits every enemy in range.',signal:'Jams hostile transmissions, slowing intruders for other units to intercept.',producer:'Keeps the studio funded. Generates credits and boosts nearby defences.',drone:'A long-range recon unit that prioritises the toughest enemy and pierces armour.',engineer:'A rapid arc rig that strips enemy armour for the rest of the defence team.'};
 function buildBar() {
-  const bar = $('build-bar'); bar.innerHTML = '';
+  const bar = $('build-bar'); const scroll=bar.scrollLeft; bar.innerHTML = '';
   for (const k of TOWER_ORDER) {
     const T = TOWERS[k], locked = !game.def.unlock.includes(k);
     const b = document.createElement('button'); b.className = 'tb' + (k === buildType ? ' sel' : '') + (locked ? ' locked' : ''); b.dataset.type = k;
-    const cv = document.createElement('canvas'); cv.width = 60; cv.height = 60; drawTowerIcon(cv.getContext('2d'), k, 30, 30, 60);
-    b.append(cv); b.insertAdjacentHTML('beforeend', `<span>${T.short}</span><span class="c">₵${T.cost}</span>`);
-    b.onclick = () => { if (locked) return toast(`${T.name} unlocks later in the campaign`); buildType = k; audio.effect('select'); selected = null; showPanel(); buildBar(); toast(`${T.name}: ${T.desc}`); };
-    bar.append(b);
+    const cv = document.createElement('canvas'); cv.width = 120; cv.height = 120; drawTowerIcon(cv.getContext('2d'), k, 60, 60, 120);
+    b.append(cv); b.insertAdjacentHTML('beforeend', `<span class="machine-name">${T.name}</span><span class="c">₵${T.cost}${locked ? " · LOCKED" : ""}</span><span class="machine-desc">${MACHINE_LORE[k]}</span>`);
+    b.onclick = () => { if (locked) return toast(`${T.name} unlocks later in the campaign`); buildType = k; audio.effect('select'); selected = null; showPanel(); buildBar(); toast(`${T.name}: tap a free tile to deploy`); };
+    b.setAttribute('aria-pressed',String(k===buildType)); b.setAttribute('aria-label',T.name+', '+T.cost+' credits. '+MACHINE_LORE[k]+(locked?' Locked.':'')); bar.append(b);
   }
+  bar.scrollLeft=scroll; updateBuildHint();
 }
 function showPanel() {
   const p = $('tower-panel'), bar = $('build-bar');
-  if (!selected) { p.hidden = true; bar.hidden = false; return; }
+  if (!selected) { p.hidden = true; bar.hidden = false; updateBuildHint(); return; }
   const t = selected, T = TOWERS[t.type], s = towerStats(t.type, t.level), max = t.level >= MAX_TOWER_LEVEL, uc = upgradeCost(t.type, t.level);
-  p.hidden = false; bar.hidden = true;
+  p.hidden = false; bar.hidden = true; updateBuildHint();
   p.innerHTML = `<div class="info"><b style="color:${T.color}">${T.name}</b> Lv${t.level}<br>
-    ${t.type === 'producer' ? `+₵${s.income}/wave · +15% dmg to neighbours` : `DMG ${s.damage.toFixed(0)} · RATE ${s.rate.toFixed(1)}/s · RNG ${s.range.toFixed(1)}`}</div>
+    ${MACHINE_LORE[t.type]}<br>${t.type === 'producer' ? `+₵${s.income}/wave · +15% dmg to neighbours` : `DMG ${s.damage.toFixed(0)} · RATE ${s.rate.toFixed(1)}/s · RNG ${s.range.toFixed(1)}`}</div>
     <button id="p-up" ${max || game.credits < uc ? 'disabled' : ''}>${max ? 'MAX' : `Upgrade ₵${uc}`}</button>
     <button id="p-sell">Sell ₵${Math.floor(t.spent * 0.7)}</button><button id="p-close" class="sm">✕</button>`;
   bind({ 'p-up': () => { const r = game.upgrade(t); if (!r.ok) toast(r.reason); else audio.effect('upgrade'); showPanel(); updateHud(); },
     'p-sell': () => { game.sell(t); audio.effect('sell'); selected = null; showPanel(); updateHud(); }, 'p-close': () => { selected = null; showPanel(); } });
 }
+function updateBuildHint(){const el=$('build-hint');if(!el||!game)return;const T=TOWERS[buildType];el.textContent=selected?'Selected: '+TOWERS[selected.type].name+' · Upgrade or sell below':game.credits<T.cost?'Selected: '+T.name+' · Not enough credits':'Selected: '+T.name+' · Tap a marked tile to deploy';}
 function updateHud() {
-  $('hud-level').textContent = game.def.number; $('hud-wave').textContent = `${game.wave}/${game.totalWaves}`;
+  updateBuildHint(); $('hud-level').textContent = game.def.number; $('hud-wave').textContent = `${game.wave}/${game.totalWaves}`;
   $('hud-credits').textContent = game.credits; $('hud-lives').textContent = game.lives;
   $('hud-score').textContent = (save.run?.score || 0) + game.score;
   const w = $('btn-wave'); w.disabled = game.phase !== 'build'; w.textContent = game.phase === 'wave' ? 'WAVE LIVE…' : `START WAVE ${game.wave + 1} ▶`;
@@ -127,7 +130,7 @@ canvas.addEventListener('pointerdown', (ev) => {
   if (t) { selected = t; showPanel(); return; }
   if (selected) { selected = null; showPanel(); return; }
   const res = game.place(buildType, cx, cy);
-  if (!res.ok && cx >= 0 && cy >= 0 && cx < 16 && cy < 10) toast(res.reason);
+  if (!res.ok && cx >= 0 && cy >= 0 && cx < 16 && cy < 10) toast(res.reason==='Blocked tile'?'Choose a marked construction tile, not the enemy route.':res.reason);
   updateHud();
 });
 canvas.addEventListener('pointermove', (ev) => { if (ev.pointerType !== 'mouse' || !game) return; const r = canvas.getBoundingClientRect(); hover = renderer.toCell(ev.clientX - r.left, ev.clientY - r.top); });
@@ -225,7 +228,7 @@ function loop(now) {
       if (e.type === 'lost') onLose();
     }
     if (selected && !game.towers.includes(selected)) { selected = null; showPanel(); }
-    renderer.draw(game, { hover, selected }); updateHudThrottled();
+    renderer.draw(game, { hover, selected, buildType }); updateHudThrottled();
   }
   requestAnimationFrame(loop);
 }
