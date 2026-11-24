@@ -17,7 +17,7 @@ function banner(msg) { const b = $('banner'); b.textContent = msg; b.classList.a
 function resize() { const r = stage.getBoundingClientRect(); renderer.resize(r.width, r.height); }
 window.addEventListener('resize', resize); window.addEventListener('orientationchange', () => setTimeout(resize, 200));
 
-function showOverlay(html) { overlay.innerHTML = `<div class="card">${html}</div>`; overlay.classList.add('show'); paused = true; }
+function showOverlay(html) { overlay.innerHTML = `<div class="card">${html}</div>`; overlay.classList.add('show'); paused = true; audioControls(overlay.firstElementChild,true); }
 function hideOverlay() { overlay.classList.remove('show'); overlay.innerHTML = ''; paused = false; }
 function bind(map) { for (const [id, fn] of Object.entries(map)) { const el = $(id); if (el) el.onclick = fn; } }
 
@@ -60,10 +60,10 @@ function howScreen() {
   bind({ 'o-back': game && !game.ended ? resumeOrTitle : titleScreen });
 }
 function creditsScreen() {
-  showOverlay(`<h2>Credits / About</h2><p><b>Ghost Works: Studio Siege</b> — Version 1.0</p>
+  showOverlay(`<h2>Credits / About</h2><p><b>Ghost Works: Studio Siege</b> — 16-bit audiovisual preview</p>
     <p>An original Ghost Works title. All artwork is procedurally generated with HTML Canvas and CSS; no third-party art or franchise assets are used.</p>
     <p>Credits (₵) are a fictional in-game currency with no real-world value. No purchases, wallets or payments.</p>
-    <p><small>Development assisted by AI tooling (Grok Build).</small></p>
+    <p><small>Original synthesized soundtrack and arcade sound effects. Development assisted by Grok Build and ChatGPT.</small></p>
     <div class="btns"><button id="o-back">Back</button></div>`);
   bind({ 'o-back': titleScreen });
 }
@@ -95,7 +95,7 @@ function buildBar() {
     const b = document.createElement('button'); b.className = 'tb' + (k === buildType ? ' sel' : '') + (locked ? ' locked' : ''); b.dataset.type = k;
     const cv = document.createElement('canvas'); cv.width = 60; cv.height = 60; drawTowerIcon(cv.getContext('2d'), k, 30, 30, 60);
     b.append(cv); b.insertAdjacentHTML('beforeend', `<span>${T.short}</span><span class="c">₵${T.cost}</span>`);
-    b.onclick = () => { if (locked) return toast(`${T.name} unlocks later in the campaign`); buildType = k; selected = null; showPanel(); buildBar(); toast(`${T.name}: ${T.desc}`); };
+    b.onclick = () => { if (locked) return toast(`${T.name} unlocks later in the campaign`); buildType = k; audio.effect('select'); selected = null; showPanel(); buildBar(); toast(`${T.name}: ${T.desc}`); };
     bar.append(b);
   }
 }
@@ -108,8 +108,8 @@ function showPanel() {
     ${t.type === 'producer' ? `+₵${s.income}/wave · +15% dmg to neighbours` : `DMG ${s.damage.toFixed(0)} · RATE ${s.rate.toFixed(1)}/s · RNG ${s.range.toFixed(1)}`}</div>
     <button id="p-up" ${max || game.credits < uc ? 'disabled' : ''}>${max ? 'MAX' : `Upgrade ₵${uc}`}</button>
     <button id="p-sell">Sell ₵${Math.floor(t.spent * 0.7)}</button><button id="p-close" class="sm">✕</button>`;
-  bind({ 'p-up': () => { const r = game.upgrade(t); if (!r.ok) toast(r.reason); showPanel(); updateHud(); },
-    'p-sell': () => { game.sell(t); selected = null; showPanel(); updateHud(); }, 'p-close': () => { selected = null; showPanel(); } });
+  bind({ 'p-up': () => { const r = game.upgrade(t); if (!r.ok) toast(r.reason); else audio.effect('upgrade'); showPanel(); updateHud(); },
+    'p-sell': () => { game.sell(t); audio.effect('sell'); selected = null; showPanel(); updateHud(); }, 'p-close': () => { selected = null; showPanel(); } });
 }
 function updateHud() {
   $('hud-level').textContent = game.def.number; $('hud-wave').textContent = `${game.wave}/${game.totalWaves}`;
@@ -165,18 +165,29 @@ function onLose() {
    boss:{bpm:152,roots:[40,41,38,43],lead:[76,77,79,null,76,72,74,null,77,76,72,71,74,null,79,77]}
  };
  class ArcadeAudio {
-   constructor(){this.ctx=null;this.bus=null;this.enabled=true;this.mode='menu';this.step=0;this.next=0;this.timer=null;this.nodes=new Set();try{this.enabled=localStorage.getItem('ghostworks.music')!=='off';}catch{}}
-   async start(){if(!this.enabled)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
-     try{if(!this.ctx){this.ctx=new AC();this.bus=this.ctx.createGain();this.bus.gain.value=.16;this.bus.connect(this.ctx.destination);}
+   constructor(){this.ctx=null;this.bus=null;this.enabled=true;this.mode='menu';this.step=0;this.next=0;this.timer=null;this.nodes=new Set();this.fxNodes=new Set();this.fxEnabled=true;this.lastFx={};try{this.enabled=localStorage.getItem('ghostworks.music')!=='off';this.fxEnabled=localStorage.getItem('ghostworks.sfx')!=='off';}catch{}}
+   async start(){if(!this.enabled&&!this.fxEnabled)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+     try{if(!this.ctx){this.ctx=new AC();this.bus=this.ctx.createGain();this.bus.gain.value=.16;this.bus.connect(this.ctx.destination);this.fxBus=this.ctx.createGain();this.fxBus.gain.value=.20;this.fxBus.connect(this.ctx.destination);}
        if(this.ctx.state==='suspended')await this.ctx.resume();
-       if(this.ctx.state!=='running'||!this.enabled||document.hidden)return;
-       if(!this.timer){this.next=this.ctx.currentTime+.06;this.timer=setInterval(()=>this.tick(),35);}
+       if(this.ctx.state!=='running'||document.hidden)return;
+       if(this.enabled&&!this.timer){this.next=this.ctx.currentTime+.06;this.timer=setInterval(()=>this.tick(),35);}
      }catch{}}
    stop(){if(this.timer){clearInterval(this.timer);this.timer=null;}for(const n of this.nodes){try{n.stop();}catch{}}this.nodes.clear();}
    setEnabled(v){this.enabled=v;try{localStorage.setItem('ghostworks.music',v?'on':'off');}catch{}if(v)this.start();else this.stop();}
+   stopFx(){for(const n of this.fxNodes){try{n.stop();}catch{}}this.fxNodes.clear();}
+   setFx(v){this.fxEnabled=v;try{localStorage.setItem('ghostworks.sfx',v?'on':'off');}catch{}if(v)this.start();else this.stopFx();}
    setMode(mode){if(mode!==this.mode){this.mode=mode;this.step=0;this.stop();if(this.enabled&&!document.hidden&&this.ctx?.state==='running')this.start();}}
-   tone(note,at,dur,vol,type='square',slide=0){if(!this.ctx||note==null)return;const o=this.ctx.createOscillator(),g=this.ctx.createGain();const hz=440*Math.pow(2,(note-69)/12);o.type=type;o.frequency.setValueAtTime(hz,at);if(slide)o.frequency.exponentialRampToValueAtTime(hz*Math.pow(2,slide/12),at+dur*.8);
-     g.gain.setValueAtTime(.0001,at);g.gain.linearRampToValueAtTime(vol,at+.008);g.gain.exponentialRampToValueAtTime(.0001,at+dur);o.connect(g);g.connect(this.bus);this.nodes.add(o);o.onended=()=>{this.nodes.delete(o);o.disconnect();g.disconnect();};o.start(at);o.stop(at+dur+.012);}
+   tone(note,at,dur,vol,type='square',slide=0,fx=false){if(!this.ctx||note==null)return;const nodes=fx?this.fxNodes:this.nodes;const o=this.ctx.createOscillator(),g=this.ctx.createGain();const hz=440*Math.pow(2,(note-69)/12);o.type=type;o.frequency.setValueAtTime(hz,at);if(slide)o.frequency.exponentialRampToValueAtTime(hz*Math.pow(2,slide/12),at+dur*.8);
+     g.gain.setValueAtTime(.0001,at);g.gain.linearRampToValueAtTime(vol,at+.008);g.gain.exponentialRampToValueAtTime(.0001,at+dur);o.connect(g);g.connect(fx?this.fxBus:this.bus);nodes.add(o);o.onended=()=>{nodes.delete(o);o.disconnect();g.disconnect();};o.start(at);o.stop(at+dur+.012);}
+   effect(kind){if(!this.fxEnabled||!this.ctx||this.ctx.state!=='running'||document.hidden||this.fxNodes.size>28)return;
+     const now=this.ctx.currentTime;if(now-(this.lastFx[kind]??-10)<(kind==='laser'?.075:kind==='kill'?.10:.045))return;this.lastFx[kind]=now;
+     const hit=(n,delay,dur,vol,type='triangle',slide=0)=>this.tone(n,now+.012+delay,dur,vol,type,slide,true);
+     const phrase=(ns,step=.075)=>ns.forEach((n,i)=>hit(n,i*step,.13,.17,'triangle'));
+     switch(kind){case 'laser':hit(83,0,.065,.11,'square',-15);break;case 'pulse':hit(43,0,.23,.32,'sine',-17);hit(55,0,.14,.12,'triangle',-10);break;
+       case 'place':phrase([55,67,74],.045);break;case 'upgrade':phrase([60,64,67,72],.06);break;case 'sell':phrase([72,67,60],.05);break;case 'kill':hit(57,0,.09,.13,'triangle',-12);hit(79,.025,.05,.09,'square',-10);break;
+       case 'bossKill':hit(37,0,.48,.35,'triangle',-17);phrase([60,67,72,76],.09);break;case 'leak':hit(50,0,.3,.24,'sawtooth',-7);break;case 'wave':phrase([55,55,62,67],.085);break;
+       case 'clear':phrase([60,64,67,72],.11);break;case 'won':phrase([60,64,67,72,76,79],.12);break;case 'lost':phrase([64,60,57,48],.16);break;case 'select':hit(76,0,.055,.10,'triangle');break;}
+   }
    tick(){if(!this.ctx||this.ctx.state!=='running'||document.hidden)return;const m=MUSIC[this.mode]||MUSIC.menu,dt=60/m.bpm/4,now=this.ctx.currentTime;if(this.next<now-.15)this.next=now+.03;
      let guard=0;while(this.next<now+.13&&guard++<16){const n=this.step++,i=n%16,root=m.roots[Math.floor(n/16)%m.roots.length],at=this.next;
        if(i%4===0||i%4===2)this.tone(root+(i%8===6?7:0),at,dt*1.7,.22,'triangle');
@@ -189,21 +200,25 @@ function onLose() {
      }}
  }
  const audio=new ArcadeAudio();
- const musicButton=document.createElement('button');musicButton.id='btn-music';musicButton.className='sm';musicButton.setAttribute('aria-label','Toggle music');
- function musicLabel(){musicButton.textContent=audio.enabled?'♫':'♪ ×';musicButton.setAttribute('aria-pressed',String(audio.enabled));musicButton.title=audio.enabled?'Mute music':'Enable music';}
- document.querySelector('.ctrls').prepend(musicButton);musicLabel();
- musicButton.addEventListener('click',()=>{audio.setEnabled(!audio.enabled);musicLabel();});
+ function audioControls(host,overlayMode=false){const wrap=document.createElement('div');wrap.className='audio-controls';for(const kind of ['music','sfx']){const b=document.createElement('button');b.type='button';b.className='sm';b.dataset.audio=kind;b.dataset.full=overlayMode?'yes':'no';b.setAttribute('aria-label',kind==='music'?'Toggle music':'Toggle sound effects');b.onclick=()=>{if(kind==='music')audio.setEnabled(!audio.enabled);else{audio.setFx(!audio.fxEnabled);audio.effect('select');}audioLabels();};wrap.append(b);}host.prepend(wrap);audioLabels();}
+ function audioLabels(){for(const b of document.querySelectorAll('[data-audio]')){const music=b.dataset.audio==='music',on=music?audio.enabled:audio.fxEnabled;b.textContent=b.dataset.full==='yes'?(music?'Music':'Sound')+': '+(on?'ON':'OFF'):(music?'♫':'FX')+(on?'':' ×');b.setAttribute('aria-pressed',String(on));b.title=(on?'Mute ':'Enable ')+(music?'music':'sound effects');}}
+ audioControls(document.querySelector('.ctrls'));
  document.addEventListener('pointerdown',()=>audio.start(),{passive:true});
  document.addEventListener('keydown',()=>audio.start());
- document.addEventListener('visibilitychange',()=>{if(document.hidden)audio.stop();else if(audio.ctx&&audio.enabled)audio.start();});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){audio.stop();audio.stopFx();}else if(audio.ctx&&(audio.enabled||audio.fxEnabled))audio.start();});
 
+const heardEffects=new WeakSet();
 let last = performance.now(), acc = 0; const STEP = 1 / 60;
 function loop(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   audio.setMode(!game||paused?'menu':game.phase==='wave'?(game.enemies.some(e=>e.boss)?'boss':'wave'):'build');
   if (game) {
     if (!paused) { acc += dt * speed; while (acc >= STEP) { game.update(STEP); acc -= STEP; } } else acc = 0;
+    if(!paused){for(const f of game.effects){if(!heardEffects.has(f)){heardEffects.add(f);if(f.kind==='beam')audio.effect('laser');else if(f.kind==='pulse')audio.effect('pulse');}}}
     for (const e of game.events.splice(0)) {
+      if(e.type==='place'||e.type==='wave'||e.type==='leak'||e.type==='won'||e.type==='lost')audio.effect(e.type);
+      if(e.type==='kill')audio.effect(e.enemy?.boss?'bossKill':'kill');
+      if(e.type==='waveClear')audio.effect('clear');
       if (e.type === 'waveClear') { banner('WAVE CLEARED'); }
       if (e.type === 'leak') navigator.vibrate?.(30);
       if (e.type === 'won') onWin();
