@@ -156,9 +156,51 @@ function onLose() {
   bind({ 'o-retry': () => startLevel(n), 'o-new': () => { save.run = null; newRunNow(); }, 'o-title': titleScreen });
 }
 
+
+ // Original procedural FM-inspired soundtrack; no external audio or assets.
+ const MUSIC = {
+   menu:{bpm:100,roots:[45,41,48,43],lead:[69,null,72,null,76,74,null,72,67,null,69,null,72,null,64,null]},
+   build:{bpm:112,roots:[45,48,43,41],lead:[69,72,null,76,74,null,72,null,67,71,null,74,72,null,69,null]},
+   wave:{bpm:136,roots:[45,43,41,43],lead:[76,null,74,72,69,null,72,74,77,null,76,72,71,null,74,76]},
+   boss:{bpm:152,roots:[40,41,38,43],lead:[76,77,79,null,76,72,74,null,77,76,72,71,74,null,79,77]}
+ };
+ class ArcadeAudio {
+   constructor(){this.ctx=null;this.bus=null;this.enabled=true;this.mode='menu';this.step=0;this.next=0;this.timer=null;this.nodes=new Set();try{this.enabled=localStorage.getItem('ghostworks.music')!=='off';}catch{}}
+   async start(){if(!this.enabled)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+     try{if(!this.ctx){this.ctx=new AC();this.bus=this.ctx.createGain();this.bus.gain.value=.16;this.bus.connect(this.ctx.destination);}
+       if(this.ctx.state==='suspended')await this.ctx.resume();
+       if(this.ctx.state!=='running'||!this.enabled||document.hidden)return;
+       if(!this.timer){this.next=this.ctx.currentTime+.06;this.timer=setInterval(()=>this.tick(),35);}
+     }catch{}}
+   stop(){if(this.timer){clearInterval(this.timer);this.timer=null;}for(const n of this.nodes){try{n.stop();}catch{}}this.nodes.clear();}
+   setEnabled(v){this.enabled=v;try{localStorage.setItem('ghostworks.music',v?'on':'off');}catch{}if(v)this.start();else this.stop();}
+   setMode(mode){if(mode!==this.mode){this.mode=mode;this.step=0;this.stop();if(this.enabled&&!document.hidden&&this.ctx?.state==='running')this.start();}}
+   tone(note,at,dur,vol,type='square',slide=0){if(!this.ctx||note==null)return;const o=this.ctx.createOscillator(),g=this.ctx.createGain();const hz=440*Math.pow(2,(note-69)/12);o.type=type;o.frequency.setValueAtTime(hz,at);if(slide)o.frequency.exponentialRampToValueAtTime(hz*Math.pow(2,slide/12),at+dur*.8);
+     g.gain.setValueAtTime(.0001,at);g.gain.linearRampToValueAtTime(vol,at+.008);g.gain.exponentialRampToValueAtTime(.0001,at+dur);o.connect(g);g.connect(this.bus);this.nodes.add(o);o.onended=()=>{this.nodes.delete(o);o.disconnect();g.disconnect();};o.start(at);o.stop(at+dur+.012);}
+   tick(){if(!this.ctx||this.ctx.state!=='running'||document.hidden)return;const m=MUSIC[this.mode]||MUSIC.menu,dt=60/m.bpm/4,now=this.ctx.currentTime;if(this.next<now-.15)this.next=now+.03;
+     let guard=0;while(this.next<now+.13&&guard++<16){const n=this.step++,i=n%16,root=m.roots[Math.floor(n/16)%m.roots.length],at=this.next;
+       if(i%4===0||i%4===2)this.tone(root+(i%8===6?7:0),at,dt*1.7,.22,'triangle');
+       const melody=m.lead[i];if(melody!=null){this.tone(melody,at,dt*1.55,.095,'square');this.tone(melody+12,at,dt*.65,.018,'sine');}
+       if(i%4===0)this.tone(29,at,.12,.18,'sine',-17);
+       if(i%4===2)this.tone(78,at,.045,.025,'triangle',-11);
+       if(i%4===1||i%4===3)this.tone(93,at,.027,.012,'square',-7);
+       if(i%8===0){this.tone(root+12,at,dt*6.5,.026,'triangle');this.tone(root+19,at,dt*6.5,.021,'triangle');}
+       this.next+=dt;
+     }}
+ }
+ const audio=new ArcadeAudio();
+ const musicButton=document.createElement('button');musicButton.id='btn-music';musicButton.className='sm';musicButton.setAttribute('aria-label','Toggle music');
+ function musicLabel(){musicButton.textContent=audio.enabled?'♫':'♪ ×';musicButton.setAttribute('aria-pressed',String(audio.enabled));musicButton.title=audio.enabled?'Mute music':'Enable music';}
+ document.querySelector('.ctrls').prepend(musicButton);musicLabel();
+ musicButton.addEventListener('click',()=>{audio.setEnabled(!audio.enabled);musicLabel();});
+ document.addEventListener('pointerdown',()=>audio.start(),{passive:true});
+ document.addEventListener('keydown',()=>audio.start());
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)audio.stop();else if(audio.ctx&&audio.enabled)audio.start();});
+
 let last = performance.now(), acc = 0; const STEP = 1 / 60;
 function loop(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  audio.setMode(!game||paused?'menu':game.phase==='wave'?(game.enemies.some(e=>e.boss)?'boss':'wave'):'build');
   if (game) {
     if (!paused) { acc += dt * speed; while (acc >= STEP) { game.update(STEP); acc -= STEP; } } else acc = 0;
     for (const e of game.events.splice(0)) {
